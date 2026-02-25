@@ -1,0 +1,108 @@
+local DataService = require(script.Parent.DataService)
+local CurrencyService = require(script.Parent.CurrencyService)
+local InventoryService = require(script.Parent.InventoryService)
+local ItemConfig = require(script.Parent.ItemConfig)
+local StateService = require(script.Parent.StateService)
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local StateSync = ReplicatedStorage.Remotes.StateSync
+
+local ShopService = {}
+
+function ShopService:BuyItem(player, itemName, quantity)
+	if type(quantity) ~= "number" or quantity <= 0 then
+		return { Success = false, Error = "InvalidQuantity" }
+	end
+	
+	if quantity <= 0 then 
+		return{Success = false, Error = "InvalidQuantity"} 
+	end
+	
+	local item = ItemConfig[itemName]
+	if not item then 
+		return{Success = false, Error = "InvalidItem"}
+	end
+	
+	local currentAmount = InventoryService:GetQuantity(player, itemName) or 0
+	local newAmount = currentAmount + quantity
+	
+	if not item.Max then
+		return { Success = false, Error = "ItemConfigError" }
+	end
+
+		if newAmount > item.Max then 
+		return{Success = false, Error ="MaxStackReached"}
+	end
+	
+	local totalPrice = item.BuyPrice * quantity
+	
+	local removed  = CurrencyService:Remove(player, totalPrice)
+	if not removed then 
+		return{Success = false, Error = "CurrencyRemoveFailed"}
+	end
+	
+	local added = InventoryService:AddItem(player, itemName, quantity)
+	if not added then
+		CurrencyService:Add(player, totalPrice)
+		return {Success = false, Error = "InventoryAddFailed"}
+	end
+	
+	local snapshot = StateService:BuildSnapshot(player)
+	if snapshot then
+		StateSync:FireClient(player, snapshot)
+	end
+	
+	return {Success = true}
+end
+
+function ShopService:SellItem(player, itemName, quantity)
+	if type(quantity) ~= "number" or quantity <= 0 or quantity % 1 ~= 0 then
+		return { Success = false, Error = "InvalidQuantity" }
+	end
+
+	local item = ItemConfig[itemName]
+	if not item then 
+		return { Success = false, Error = "InvalidItem" }
+	end
+
+	if not item.SellPrice then
+		return { Success = false, Error = "ItemNotSellable" }
+	end
+
+	local owned = InventoryService:GetQuantity(player, itemName) 
+	if not owned or owned < quantity then 
+		return { Success = false, Error = "NotEnoughItems" }
+	end
+
+	local sellPrice = item.SellPrice * quantity
+
+	local removed = InventoryService:RemoveItem(player, itemName, quantity)
+	if not removed then 
+		return { Success = false, Error = "InventoryRemoveFailed" }
+	end 
+
+	local data = DataService:Get(player)
+	if data and data.Inventory then
+		local remaining = data.Inventory[itemName] or 0
+		if data.Equipped == itemName and remaining <= 0 then
+			DataService:Set(player, "Equipped", nil)
+		end
+	end
+
+	local added = CurrencyService:Add(player, sellPrice)
+	if not added then
+		InventoryService:AddItem(player, itemName, quantity)
+		return { Success = false, Error = "CurrencyAddFailed" }
+	end
+
+	local snapshot = StateService:BuildSnapshot(player)
+	if snapshot then
+		StateSync:FireClient(player, snapshot)
+	end
+
+	return {
+		Success = true,
+		Value = sellPrice
+	}
+end
+return ShopService
