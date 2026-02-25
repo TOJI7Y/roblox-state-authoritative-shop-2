@@ -1,0 +1,107 @@
+local InventoryService = {}
+
+local DataService = require(script.Parent.DataService)
+local ItemConfig = require(script.Parent.ItemConfig)
+
+function InventoryService:HasItem(player, itemId)
+	return self:GetQuantity(player, itemId) > 0
+	
+end
+
+function InventoryService:GetQuantity(player, itemId)
+	local data = DataService:Get(player)
+	if not data then return 0 end
+	
+	local inventory = data.Inventory
+	if not inventory then return 0
+	end
+	
+	return inventory[itemId] or 0
+	
+end
+
+function InventoryService:AddItem(player, itemId, amount)
+	if type(itemId) ~= "string" then
+		return false
+	end
+
+	amount = amount or 1 
+	if type(amount) ~= "number" or amount <= 0 then return false 
+		
+	end
+	local data = DataService:Get(player)
+	if not data then return false end
+	
+	local inventory = data.Inventory
+	if not inventory then
+		return false
+	end
+	
+	local config = ItemConfig[itemId]
+	if not config then return false end
+	
+	local current = inventory[itemId] or 0
+	
+	if not config.Stackable then
+		if amount ~= 1 then
+			return false
+		end
+
+		if current >= 1 then 
+			return false
+		end
+		inventory[itemId] = 1
+	else
+		local newAmount = current + amount
+		if not config.Max or newAmount > config.Max then
+			return false
+		end
+		inventory[itemId] = newAmount
+	end
+	DataService:MarkDirty(player)
+	
+	return true 
+end
+
+function InventoryService:RemoveItem(player, itemId, amount)
+	if type(itemId) ~= "string" then
+		return false
+	end
+	
+	amount = amount or 1 
+	if type(amount) ~= "number" or amount <= 0 then return false 
+	end
+	
+	local data = DataService:Get(player)
+	if not data then return false end
+	
+	local inventory = data.Inventory
+	if not inventory then 
+		return false
+	end
+	
+	local config = ItemConfig[itemId]
+	if not config then return false end
+
+	
+	local current = inventory[itemId] 
+	if not current or current < amount then 
+		return false
+	end
+	
+	local newAmount = current - amount
+	if newAmount == 0 then
+		inventory[itemId] = nil
+		
+		if data.Equipped == itemId then
+			data.Equipped = nil
+		end
+	else
+		inventory[itemId] = newAmount
+	end
+	
+	DataService:MarkDirty(player)
+	
+	return true 
+end
+return InventoryService
