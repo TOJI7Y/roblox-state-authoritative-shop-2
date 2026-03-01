@@ -115,19 +115,32 @@ ReplicatedStorage/Shared/ItemConfig.lua
 Example structure:
 
 ```lua
-return {
-    Potion = {
-        BuyPrice = 50,
-        SellPrice = 25,
-        Max = 100
-    },
+local ItemConfig = {
 
-    Sword = {
-        BuyPrice = 500,
-        SellPrice = 200,
-        Max = 1
-    }
+	potion = {
+		BuyPrice = 100,
+		SellPrice = 50,
+		Stackable = true,
+		Max = 99,
+		Power = 10,
+		Rarity = "Rare",
+		Image = "rbxassetid://93407771464016"
+	},
+
+	sword = {
+		BuyPrice = 500,
+		SellPrice = 250,
+		Stackable = false,
+		Max = 1,
+		Power = 100,
+		Rarity = "Legendary",
+		Image =  "rbxassetid://82345109307919"
+	}
+
 }
+
+return ItemConfig
+
 ```
 
 ### Required Fields
