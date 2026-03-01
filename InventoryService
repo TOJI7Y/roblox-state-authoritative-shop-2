@@ -1,7 +1,8 @@
 local InventoryService = {}
 
+local replicatedStorage = game:GetService("ReplicatedStorage")
 local DataService = require(script.Parent.DataService)
-local ItemConfig = require(script.Parent.ItemConfig)
+local ItemConfig = require(replicatedStorage.Shared.ItemConfig)
 
 function InventoryService:HasItem(player, itemId)
 	return self:GetQuantity(player, itemId) > 0
