@@ -1,7 +1,8 @@
 local DataService = require(script.Parent.DataService)
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CurrencyService = require(script.Parent.CurrencyService)
 local InventoryService = require(script.Parent.InventoryService)
-local ItemConfig = require(script.Parent.ItemConfig)
+local ItemConfig = require(ReplicatedStorage.Shared.ItemConfig)
 local StateService = require(script.Parent.StateService)
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
