@@ -1,47 +1,50 @@
-# 🧱 Roblox State-Authoritative Inventory & Shop Backend
+# Roblox State-Authoritative Inventory & Shop Backend
 
-A secure, modular, server-authoritative backend framework for building inventory, currency, shop, equip, and consumable systems in Roblox.
+A secure and modular backend system for Roblox that handles **inventory, currency, shop purchases, equipping items, and consumables**.
 
-Designed for exploit resistance, transactional safety, and scalable architecture.
-
----
-
-## 🎯 Overview
-
-This system separates:
-
-- **Backend logic** (ServerScriptService)
-- **Configuration** (ReplicatedStorage/Shared)
-- **Remotes** (ReplicatedStorage/Remotes)
-- **UI** (StarterGui / Client)
-
-All purchases, sells, equips, and currency mutations are validated server-side.
-
-Clients never control price, quantity, or state.
+The system is designed to be **server-authoritative**, meaning the client never controls important game data. All validation happens on the server to prevent exploits and maintain consistent state across players.
 
 ---
 
-## 🔐 Security Features
+## Overview
 
-- Server-authoritative buy/sell validation  
-- Integer-only quantity enforcement  
-- Max stack enforcement  
-- Per-player transaction locking (race-condition protection)  
-- Atomic operations with rollback safety  
-- Remote spam resistance  
-- Snapshot-based UI state syncing  
-- Centralized item configuration  
+This framework separates the game into clear layers so each part of the system has a single responsibility.
 
-Designed to prevent:
+* **Backend Logic** – Handles validation, transactions, and state management (ServerScriptService)
+* **Configuration** – Stores item data such as price, stack size, and rarity (ReplicatedStorage/Shared)
+* **Remotes** – Communication bridge between client and server (ReplicatedStorage/Remotes)
+* **UI** – Inventory, shop, and currency displays (StarterGui)
 
-- Duplication exploits  
-- Stack overflow bypass  
-- Negative currency abuse  
-- Client-side price manipulation  
+The client can **request actions**, but it never decides outcomes.
+The server validates everything before changing player data.
 
 ---
 
-## 🏗 Architecture
+## Security Design
+
+This system was built with exploit resistance in mind.
+
+Key protections include:
+
+* Server-side validation for every buy or sell request
+* Quantity checks to ensure only valid integers are accepted
+* Stack limits enforced on the server
+* Per-player transaction locks to prevent race conditions
+* Atomic transactions with rollback safety
+* Protection against remote spam
+* Snapshot-based syncing to keep UI consistent
+* Centralized item configuration to prevent mismatches
+
+These safeguards help prevent common exploits such as:
+
+* Item duplication
+* Stack overflow abuse
+* Negative currency manipulation
+* Client-side price tampering
+
+---
+
+## Architecture
 
 ```
 ServerScriptService
@@ -76,43 +79,52 @@ StarterGui
 └─ ShopGui
 ```
 
----
-
-## 🛒 Buy Flow (Server-Side)
-
-1. Validate item exists  
-2. Validate quantity (integer & capped)  
-3. Validate stack limit  
-4. Remove currency  
-5. Add inventory  
-6. Rollback if failure  
-7. Sync updated state to client  
-
-All steps are executed server-side.
+Each service is responsible for one part of the system.
+This makes the backend easier to maintain and expand as the game grows.
 
 ---
 
-## 💰 Sell Flow (Server-Side)
+## Buy Flow
 
-1. Validate ownership  
-2. Remove inventory  
-3. Add currency  
-4. Rollback on failure  
-5. Sync state  
+When a player purchases an item, the server follows a strict validation process:
 
-Transactions are atomic and protected against race conditions.
+1. Confirm the item exists in the configuration
+2. Validate the quantity requested
+3. Check that stack limits are not exceeded
+4. Deduct the correct amount of currency
+5. Add the item to the player's inventory
+6. Roll back the transaction if any step fails
+7. Send an updated state snapshot to the client
+
+Every step runs on the **server only**.
 
 ---
 
-## ⚙ Item Configuration
+## Sell Flow
 
-Create a separate `ItemConfig.lua` file inside:
+Selling items follows a similar server-side transaction process:
+
+1. Confirm the player owns the item
+2. Remove the item from inventory
+3. Add the appropriate currency value
+4. Roll back the transaction if something fails
+5. Sync the updated state to the client
+
+This keeps inventory and currency changes consistent even during heavy server activity.
+
+---
+
+## Item Configuration
+
+Items are defined in a shared configuration file.
+
+Location:
 
 ```
 ReplicatedStorage/Shared/ItemConfig.lua
 ```
 
-Example structure:
+Example:
 
 ```lua
 local ItemConfig = {
@@ -134,82 +146,95 @@ local ItemConfig = {
 		Max = 1,
 		Power = 100,
 		Rarity = "Legendary",
-		Image =  "rbxassetid://82345109307919"
+		Image = "rbxassetid://82345109307919"
 	}
 
 }
 
 return ItemConfig
-
 ```
 
 ### Required Fields
 
-- `BuyPrice` – Purchase cost  
-- `SellPrice` – Sell value (optional)  
-- `Max` – Maximum stack size  
+* **BuyPrice** – Currency required to purchase the item
+* **SellPrice** – Currency returned when selling (optional)
+* **Max** – Maximum stack size allowed
+
+Keeping item data centralized makes balancing and expansion much easier.
 
 ---
 
-## 🧩 Installation
+## Installation
 
-1. Place all backend modules inside `ServerScriptService`.
-2. Ensure `ReplicatedStorage` contains:
-   - `Remotes` folder
-   - `Shared/ItemConfig`
-3. Connect UI buttons to the `GameAction` RemoteEvent.
-4. Configure items inside `ItemConfig`.
-5. Start the server.
+1. Place all backend modules inside **ServerScriptService**
+2. Ensure **ReplicatedStorage** contains:
 
-System will automatically validate and sync state.
+   * a `Remotes` folder
+   * `Shared/ItemConfig`
+3. Connect UI buttons to the **GameAction** RemoteEvent
+4. Add items to `ItemConfig`
+5. Start the server
+
+Once the server starts, the system will handle validation and state syncing automatically.
 
 ---
 
-## 📡 Remote Structure
+## Remote Events
 
 **GameAction**
-- Handles buy, sell, equip, and use requests.
+
+Used by the client to request actions such as:
+
+* buying items
+* selling items
+* equipping gear
+* using consumables
+
+The server verifies every request before applying changes.
+
+---
 
 **StateSync**
-- Sends updated state snapshot to the client.
+
+Sends a snapshot of the player’s current state back to the client so the UI stays updated.
+
+---
 
 **EquippedUpdate**
-- Notifies client of equip changes.
 
-Clients cannot directly mutate inventory or currency.
-
----
-
-## 🧠 Designed For
-
-- Monetized games  
-- RPG systems  
-- Simulator economies  
-- Persistent multiplayer games  
-- Developers who care about exploit resistance  
+Notifies the client when equipment changes.
 
 ---
 
-## 🚀 Why This Is Different
+## Use Cases
 
-Most shop systems:
+This backend works well for games that need a reliable economy system, such as:
 
-- Trust client input  
-- Lack transaction locking  
-- Don’t protect against race conditions  
-- Mix UI and backend logic  
-
-This system enforces:
-
-- Clear service separation  
-- Transaction safety  
-- Exploit-aware design  
-- Scalable modular structure  
+* RPGs
+* Simulator games
+* Monetized experiences
+* Persistent multiplayer worlds
 
 ---
 
-## 📌 Notes
+## Why This Architecture Works
 
-This backend focuses on structure, reliability, and security.
+Many Roblox shop systems make a critical mistake:
+they trust the client.
 
-UI customization is fully separate from backend logic and can be modified freely without affecting system integrity.
+This framework avoids that by enforcing:
+
+* strict server authority
+* atomic transactions
+* separation between UI and backend logic
+* modular service design
+
+The result is a system that is **harder to exploit and easier to maintain**.
+
+---
+
+## Final Notes
+
+The backend focuses on **security, structure, and reliability**.
+
+UI systems are intentionally kept separate, which allows developers to redesign interfaces without touching the backend logic.
